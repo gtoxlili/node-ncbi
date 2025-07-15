@@ -17,10 +17,11 @@ var Gateway = {};
  * @return: a URL
  */
 Gateway.getBase = function () {
-  return (this.base =
-    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/" +
-    this.settings.utility +
-    ".fcgi?");
+    const baseURL = process.env.NCBI_BASE_URL || "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/";
+    return (this.base =
+        baseURL +
+        this.settings.utility +
+        ".fcgi?");
 };
 
 /**
@@ -29,19 +30,19 @@ Gateway.getBase = function () {
  * Called by: this.send
  */
 Gateway.generateUrl = function () {
-  var url = this.getBase();
-  for (var key in this.settings.params) {
-    try {
-      url += key + "=" + this.settings.params[key].toString();
-      url += "&";
-    } catch (e) {
-      //skip if this parameter cannot be converted to a string
-      continue;
+    var url = this.getBase();
+    for (var key in this.settings.params) {
+        try {
+            url += key + "=" + this.settings.params[key].toString();
+            url += "&";
+        } catch (e) {
+            //skip if this parameter cannot be converted to a string
+            continue;
+        }
     }
-  }
-  //remove final &
-  url = url.substring(0, url.length - 1);
-  return encodeURI(url);
+    //remove final &
+    url = url.substring(0, url.length - 1);
+    return encodeURI(url);
 };
 
 /**
@@ -50,11 +51,11 @@ Gateway.generateUrl = function () {
  * Call .catch(function(err)) to deal with errors.
  */
 Gateway.send = function () {
-  var url = this.generateUrl();
-  return popsicle.get({
-    method: "GET",
-    url: url,
-  });
+    var url = this.generateUrl();
+    return popsicle.get({
+        method: "GET",
+        url: url,
+    });
 };
 
 /**
@@ -67,10 +68,10 @@ Gateway.send = function () {
  * Call .catch(function(err)) to deal with errors.
  */
 Gateway.resolve = function (query) {
-  return this.send().then((res) => {
-    const dataObj = parse(res.body);
-    return query(dataObj);
-  });
+    return this.send().then((res) => {
+        const dataObj = parse(res.body);
+        return query(dataObj);
+    });
 };
 
 /**
@@ -84,24 +85,24 @@ Gateway.resolve = function (query) {
  * never happen, the search method will return a simple Promise instead.
  */
 module.exports = function (args) {
-  const defaults = {
-    utility: "esearch",
-    params: {
-      retmode: "json",
-      db: "pubmed",
-    },
-  };
-  let settings = update(defaults, {
-    $merge: args,
-    params: { $merge: args.params },
-  });
-  if (process.env.NCBI_API_KEY) {
-    settings = update(settings, {
-      params: { $merge: { api_key: process.env.NCBI_API_KEY } },
+    const defaults = {
+        utility: "esearch",
+        params: {
+            retmode: "json",
+            db: "pubmed",
+        },
+    };
+    let settings = update(defaults, {
+        $merge: args,
+        params: {$merge: args.params},
     });
-  }
-  const gateway = Object.assign(Object.create(Gateway), {
-    settings: settings,
-  });
-  return gateway;
+    if (process.env.NCBI_API_KEY) {
+        settings = update(settings, {
+            params: {$merge: {api_key: process.env.NCBI_API_KEY}},
+        });
+    }
+    const gateway = Object.assign(Object.create(Gateway), {
+        settings: settings,
+    });
+    return gateway;
 };
